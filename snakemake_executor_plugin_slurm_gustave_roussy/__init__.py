@@ -62,12 +62,13 @@ common_settings = CommonSettings(
     # whether environment variables shall be passed to jobs (if False, use
     # self.envvars() to obtain a dict of environment variables and their values
     # and pass them e.g. as secrets to the execution backend)
-    pass_envvar_declarations_to_cmd=True,
+    pass_envvar_declarations_to_cmd=False,
     # whether the default storage provider shall be deployed before the job is run on
     # the remote node. Usually set to True if the executor does not assume a shared fs
-    auto_deploy_default_storage_provider=True,
+    auto_deploy_default_storage_provider=False,
     # specify initial amount of seconds to sleep before checking for job status
-    init_seconds_before_status_checks=1,
+    init_seconds_before_status_checks=40,
+    pass_group_args=True,
 )
 
 
