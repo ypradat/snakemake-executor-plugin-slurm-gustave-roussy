@@ -161,7 +161,7 @@ class Executor(RemoteExecutor):
 
         runtime: int = job.resources.get("runtime", self._default_runtime)
         partition: str = self.get_partition(
-            runtime=runtime, gres=self.resources.get("gres")
+            runtime=runtime, gres=job.resources.get("gres")
         )
         call += (
             f" --partition {partition} "
