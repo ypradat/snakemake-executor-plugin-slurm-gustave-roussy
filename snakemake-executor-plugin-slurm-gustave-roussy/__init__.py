@@ -101,7 +101,8 @@ class Executor(RemoteExecutor):
                 "No job memory information ('mem_mb' or 'mem_mb_per_cpu') is given "
                 "- submitting without. This is not a good practice as snakemake won't "
                 "be able to reshedule your job correctly in case of OUT_OF_MEMORY, or "
-                "TIMEOUR errors. A default value of 1Gb (1024Mb) was given to your job."
+                "TIMEOUR errors. "
+                "A default value of 1Gb (1024Mb) was given to your job."
             )
             call += " --mem 1024"
 

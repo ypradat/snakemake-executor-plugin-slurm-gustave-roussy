@@ -4,9 +4,6 @@ version = "0.0.1"
 description = "A Snakemake executor plugin for submitting jobs to Gustave Roussy computing cluster (Flamingo)"
 authors = [
     "Thibault Dayris <thibault.dayris@gustaveroussy.fr>",
-    "Christian Meesters <meesters@uni-mainz.de>",
-    "David Lähnemann <david.laehnemann@dkfz-heidelberg.de>",
-    "Johannes Koester <johannes.koester@uni-due.de>",
 ]
 readme = "README.md"
 license = "MIT"
