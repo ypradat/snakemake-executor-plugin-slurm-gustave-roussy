@@ -113,26 +113,29 @@ class Executor(RemoteExecutor):
         Return best partition based on runtime reservation
         and possible GPU resources reservation.
         """
-        if gres:
-            return "gpuq"
+        hostname: str = os.environ.get("HOSTNAME", "").lower()
+        if hostname.startswith("flamingo"):
+            if gres:
+                return "gpuq"
 
-        if runtime <= 360:
-            return "shortq"
+            if runtime <= 360:
+                return "shortq"
 
-        if runtime <= 60 * 24:
-            return "mediumq"
+            if runtime <= 60 * 24:
+                return "mediumq"
 
-        if runtime <= 60 * 24 * 7:
-            return "longq"
+            if runtime <= 60 * 24 * 7:
+                return "longq"
 
-        if runtime <= 60 * 24 * 60:
-            return "verylongq"
+            if runtime <= 60 * 24 * 60:
+                return "verylongq"
 
-        self.logger.warning(
-            "Could not select a correct partition. "
-            f"Falling back to default: {self._fallback_partition}"
-        )
-        return self._fallback_partition
+            self.logger.warning(
+                "Could not select a correct partition. "
+                f"Falling back to default: {self._fallback_partition}"
+            )
+            return self._fallback_partition
+        return None
 
     def run_job(self, job: JobExecutorInterface):
         # Implement here how to run a job.
@@ -163,8 +166,10 @@ class Executor(RemoteExecutor):
         partition: str = self.get_partition(
             runtime=runtime, gres=job.resources.get("gres")
         )
+        if partition:
+            call += f" --partition {partition} "
+
         call += (
-            f" --partition {partition} "
             f"--time {runtime} "
             f"--cpus-per-task {job.threads}"
         )
