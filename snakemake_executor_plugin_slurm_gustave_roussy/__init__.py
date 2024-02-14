@@ -12,9 +12,9 @@ import subprocess
 import uuid
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import List, Generator, Optional
 from snakemake_interface_executor_plugins.executors.base import SubmittedJobInfo
-from snakemake_interface_executor_plugins_slurm import Executor as SlurmExecutor
+from snakemake_interface_executor_plugins.executors.remote import RemoteExecutor
 from snakemake_interface_executor_plugins.settings import (
     ExecutorSettingsBase,
     CommonSettings,
@@ -70,15 +70,15 @@ common_settings = CommonSettings(
 
 # Required:
 # Implementation of your executor
-class Executor(SlurmExecutor):
+class Executor(RemoteExecutor):
     def __post_init__(self):
         self.run_uuid: str = str(uuid.uuid4())
         self.logger.info(f"SLURM run ID: {self.run_uuid}")
-        self.default_partition: str = "shortq"
-        self.default_runtime: int = 360
-        self.default_mem: int = 1024
+        self._default_runtime: int = 360
+        self._default_mem: int = 1024
         self._fallback_account_arg: Optional[str] = None
         self._fallback_partition: str = "shortq"
+        self._max_sleep_time: int = 120
 
         # access workflow
         # self.workflow
@@ -126,9 +126,9 @@ class Executor(SlurmExecutor):
 
         self.logger.warning(
             "Could not select a correct partition. "
-            f"Falling back to default: {self.default_partiton}"
+            f"Falling back to default: {self._fallback_partition}"
         )
-        return self.default_partition
+        return self._fallback_partition
 
     def run_job(self, job: JobExecutorInterface):
         # Implement here how to run a job.
@@ -155,7 +155,7 @@ class Executor(SlurmExecutor):
             f"--comment {job.name} "
         )
 
-        runtime: int = job.resources.get("runtime", self.default_runtime)
+        runtime: int = job.resources.get("runtime", self._default_runtime)
         partition: str = self.get_partition(
             runtime=runtime, gres=self.resources.get("gres")
         )
@@ -164,6 +164,9 @@ class Executor(SlurmExecutor):
             f"--time {runtime} "
             f"--cpus-per-task {job.threads}"
         )
+
+        memory: int = job.resources.get("mem_mb", self._default_mem)
+        call += f" --mem {memory}"
 
         # ensure that workdir is set correctly
         # use short argument as this is the same in all slurm versions
@@ -194,3 +197,189 @@ class Executor(SlurmExecutor):
                 job, external_jobid=slurm_jobid, aux={"slurm_logfile": slurm_logfile}
             )
         )
+
+
+
+    async def check_active_jobs(
+        self, active_jobs: List[SubmittedJobInfo]
+    ) -> Generator[SubmittedJobInfo, None, None]:
+        # Check the status of active jobs.
+
+        # You have to iterate over the given list active_jobs.
+        # For jobs that have finished successfully, you have to call
+        # self.report_job_success(job).
+        # For jobs that have errored, you have to call
+        # self.report_job_error(job).
+        # Jobs that are still running have to be yielded.
+        #
+        # For queries to the remote middleware, please use
+        # self.status_rate_limiter like this:
+        #
+        # async with self.status_rate_limiter:
+        #    # query remote middleware here
+        fail_status: List[str] = (
+            "BOOT_FAIL",
+            "CANCELLED",
+            "DEADLINE",
+            "FAILED",
+            "NODE_FAIL",
+            "OUT_OF_MEMORY",
+            "PREEMPTED",
+            "TIMEOUT",
+            "ERROR",
+        )
+        # Cap sleeping time between querying the status of all active jobs:
+        # If `AccountingStorageType`` for `sacct` is set to `accounting_storage/none`,
+        # sacct will query `slurmctld` (instead of `slurmdbd`) and this in turn can
+        # rely on default config, see: https://stackoverflow.com/a/46667605
+        # This config defaults to `MinJobAge=300`, which implies that jobs will be
+        # removed from `slurmctld` within 6 minutes of finishing. So we're conservative
+        # here, with half that time
+        max_sleep_time = 180
+
+        sacct_query_durations = []
+
+        status_attempts = 5
+
+        active_jobs_ids = {job_info.external_jobid for job_info in active_jobs}
+        active_jobs_seen_by_sacct = set()
+
+        # this code is inspired by the snakemake profile:
+        # https://github.com/Snakemake-Profiles/slurm
+        for i in range(status_attempts):
+            async with self.status_rate_limiter:
+                (status_of_jobs, sacct_query_duration) = await self.job_status(
+                    # -X: only show main job, no substeps
+                    f"sacct -X --parsable2 --noheader --format=JobIdRaw,State "
+                    f"--starttime now-2days --endtime now --name {self.run_uuid}"
+                )
+                if status_of_jobs is None and sacct_query_duration is None:
+                    self.logger.debug(f"could not check status of job {self.run_uuid}")
+                    continue
+                sacct_query_durations.append(sacct_query_duration)
+                self.logger.debug(f"status_of_jobs after sacct is: {status_of_jobs}")
+                # only take jobs that are still active
+                active_jobs_ids_with_current_sacct_status = (
+                    set(status_of_jobs.keys()) & active_jobs_ids
+                )
+                self.logger.debug(
+                    f"active_jobs_ids_with_current_sacct_status are: "
+                    f"{active_jobs_ids_with_current_sacct_status}"
+                )
+                active_jobs_seen_by_sacct = (
+                    active_jobs_seen_by_sacct
+                    | active_jobs_ids_with_current_sacct_status
+                )
+                self.logger.debug(
+                    f"active_jobs_seen_by_sacct are: {active_jobs_seen_by_sacct}"
+                )
+                missing_sacct_status = (
+                    active_jobs_seen_by_sacct
+                    - active_jobs_ids_with_current_sacct_status
+                )
+                self.logger.debug(f"missing_sacct_status are: {missing_sacct_status}")
+                if not missing_sacct_status:
+                    break
+            if i >= status_attempts - 1:
+                self.logger.warning(
+                    f"Unable to get the status of all active_jobs that should be "
+                    f"in slurmdbd, even after {status_attempts} attempts.\n"
+                    f"The jobs with the following slurm job ids were previously seen "
+                    "by sacct, but sacct doesn't report them any more:\n"
+                    f"{missing_sacct_status}\n"
+                    f"Please double-check with your slurm cluster administrator, that "
+                    "slurmdbd job accounting is properly set up.\n"
+                )
+
+        any_finished = False
+        for j in active_jobs:
+            # the job probably didn't make it into slurmdbd yet, so
+            # `sacct` doesn't return it
+            if j.external_jobid not in status_of_jobs:
+                # but the job should still be queueing or running and
+                # appear in slurmdbd (and thus `sacct` output) later
+                yield j
+                continue
+            status = status_of_jobs[j.external_jobid]
+            if status == "COMPLETED":
+                self.report_job_success(j)
+                any_finished = True
+                active_jobs_seen_by_sacct.remove(j.external_jobid)
+            elif status == "UNKNOWN":
+                # the job probably does not exist anymore, but 'sacct' did not work
+                # so we assume it is finished
+                self.report_job_success(j)
+                any_finished = True
+                active_jobs_seen_by_sacct.remove(j.external_jobid)
+            elif status in fail_status:
+                msg = (
+                    f"SLURM-job '{j.external_jobid}' failed, SLURM status is: "
+                    f"'{status}'"
+                )
+                self.report_job_error(j, msg=msg, aux_logs=[j.aux["slurm_logfile"]])
+                active_jobs_seen_by_sacct.remove(j.external_jobid)
+            else:  # still running?
+                yield j
+
+        if not any_finished:
+            self.next_seconds_between_status_checks = min(
+                self.next_seconds_between_status_checks + 10, max_sleep_time
+            )
+        else:
+            self.next_seconds_between_status_checks = None
+
+    def cancel_jobs(self, active_jobs: List[SubmittedJobInfo]):
+        # Cancel all active jobs.
+        # This method is called when Snakemake is interrupted.
+        if active_jobs:
+            # TODO chunk jobids in order to avoid too long command lines
+            jobids = " ".join([job_info.external_jobid for job_info in active_jobs])
+            try:
+                # timeout set to 60, because a scheduler cycle usually is
+                # about 30 sec, but can be longer in extreme cases.
+                # Under 'normal' circumstances, 'scancel' is executed in
+                # virtually no time.
+                subprocess.check_output(
+                    f"scancel {jobids}",
+                    text=True,
+                    shell=True,
+                    timeout=60,
+                    stderr=subprocess.PIPE,
+                )
+            except subprocess.TimeoutExpired:
+                self.logger.warning("Unable to cancel jobs within a minute.")
+
+    async def job_status(self, command):
+        """Obtain SLURM job status of all submitted jobs with sacct
+
+        Keyword arguments:
+        command -- a slurm command that returns one line for each job with:
+                   "<raw/main_job_id>|<long_status_string>"
+        """
+        res = query_duration = None
+        try:
+            time_before_query = time.time()
+            command_res = subprocess.check_output(
+                command, text=True, shell=True, stderr=subprocess.PIPE
+            )
+            query_duration = time.time() - time_before_query
+            self.logger.debug(
+                f"The job status was queried with command: {command}\n"
+                f"It took: {query_duration} seconds\n"
+                f"The output is:\n'{command_res}'\n"
+            )
+            res = {
+                # We split the second field in the output, as the State field
+                # could contain info beyond the JOB STATE CODE according to:
+                # https://slurm.schedmd.com/sacct.html#OPT_State
+                entry[0]: entry[1].split(sep=None, maxsplit=1)[0]
+                for entry in csv.reader(StringIO(command_res), delimiter="|")
+            }
+        except subprocess.CalledProcessError as e:
+            self.logger.error(
+                f"The job status query failed with command: {command}\n"
+                f"Error message: {e.stderr.strip()}\n"
+            )
+            pass
+
+        return (res, query_duration)
