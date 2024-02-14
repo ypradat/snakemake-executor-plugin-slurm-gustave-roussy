@@ -169,10 +169,7 @@ class Executor(RemoteExecutor):
         if partition:
             call += f" --partition {partition} "
 
-        call += (
-            f"--time {runtime} "
-            f"--cpus-per-task {job.threads}"
-        )
+        call += f"--time {runtime} --cpus-per-task {job.threads}"
 
         memory: int = job.resources.get("mem_mb", self._default_mem)
         call += f" --mem {memory}"
