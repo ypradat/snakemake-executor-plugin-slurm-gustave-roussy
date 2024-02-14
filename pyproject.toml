@@ -1,33 +1,25 @@
+[build-system]
+requires = [ "poetry-core",]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
 name = "snakemake-executor-plugin-slurm-gustave-roussy"
-version = "0.0.1"
-description = "A Snakemake executor plugin for submitting jobs to Gustave Roussy computing cluster (Flamingo)"
-authors = [
-    "Thibault Dayris <thibault.dayris@gustaveroussy.fr>",
-]
+version = "0.1.0"
+description = ""
+authors = [ "tdayris <thibault.dayris@gustaveroussy.fr>",]
 readme = "README.md"
-license = "MIT"
-repository = "https://github.com/tdayris/snakemake-executor-plugin-slurm-gustave-roussy"
+repository = "https://github.com/your/plugin"
 documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/executor/slurm-gustave-roussy.html"
-keywords = ["snakemake", "plugin", "executor", "cluster", "slurm", "Gustave Roussy"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-snakemake-interface-common = "^1.13.0"
+snakemake-interface-common = "^1.15.3"
 snakemake-interface-executor-plugins = "^8.2.0"
-snakemake-executor-plugin-slurm-jobstep = "^0.1.10"
-throttler = "^1.2.2"
+snakemake-executor-plugin-slurm = "^v0.3.0"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.7.0"
-flake8 = "^6.1.0"
-coverage = "^7.3.1"
-pytest = "^7.4.2"
-snakemake = {git = "https://github.com/snakemake/snakemake.git"}
-
-[tool.coverage.run]
-omit = [".*", "*/site-packages/*", "Snakefile"]
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+black = "^24.2.0"
+flake8 = "^7.0.0"
+coverage = "^7.4.1"
+pytest = "^8.0.0"
+snakemake = "^8.4.8"
