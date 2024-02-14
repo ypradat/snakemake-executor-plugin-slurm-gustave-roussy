@@ -198,8 +198,6 @@ class Executor(RemoteExecutor):
             )
         )
 
-
-
     async def check_active_jobs(
         self, active_jobs: List[SubmittedJobInfo]
     ) -> Generator[SubmittedJobInfo, None, None]:
