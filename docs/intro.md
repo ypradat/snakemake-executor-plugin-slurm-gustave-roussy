@@ -1,0 +1,1 @@
+Snakemake plugin executor designed to match [Gustave Roussy](https://www.gustaveroussy.fr/en) computing cluster specificities : automatic partition seleciton, and default resources value.
