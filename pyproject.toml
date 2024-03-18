@@ -14,12 +14,12 @@ documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/ex
 [tool.poetry.dependencies]
 python = "^3.11"
 snakemake-interface-common = "^1.15.3"
-snakemake-interface-executor-plugins = "^8.2.0"
-snakemake-executor-plugin-slurm = "0.3.0"
+snakemake-interface-executor-plugins = "^9.0.0"
+snakemake-executor-plugin-slurm = "^0.4.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.2.0"
 flake8 = "^7.0.0"
 coverage = "^7.4.1"
 pytest = "^8.0.0"
-snakemake = "^8.4.8"
+snakemake = "^8.8.0"
