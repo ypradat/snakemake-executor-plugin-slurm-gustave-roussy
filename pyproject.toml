@@ -4,12 +4,13 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "snakemake-executor-plugin-slurm-gustave-roussy"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
 authors = [ "tdayris <thibault.dayris@gustaveroussy.fr>",]
 readme = "README.md"
-repository = "https://github.com/your/plugin"
+repository = "https://github.com/tdayris/snakemake-executor-plugin-slurm-gustave-roussy"
 documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/executor/slurm-gustave-roussy.html"
+keywords = ["snakemake", "plugin", "executor", "cluster", "slurm", "gustave-roussy"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
