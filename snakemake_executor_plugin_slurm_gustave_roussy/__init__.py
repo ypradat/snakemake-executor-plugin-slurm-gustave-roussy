@@ -116,7 +116,7 @@ class Executor(RemoteExecutor):
         hostname: str = os.environ.get("HOSTNAME", "").lower()
         if hostname.startswith("flamingo"):
             print("Pipeline shoule not be launched from login node.")
-        else:
+        elif hostname in [f"n{i:0=2d}" for i in range(1, 26)]:
             if gres:
                 return "gpuq"
 
