@@ -1,3 +1,9 @@
+# 0.2.2
+
+## Features:
+
+* Warning on login-node submission
+
 # 0.2.0
 
 ## Features:
