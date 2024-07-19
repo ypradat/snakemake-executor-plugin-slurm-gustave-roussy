@@ -1,3 +1,9 @@
+# 0.3.0
+
+## Features:
+
+* gpu queues and nodes handled
+
 # 0.2.2
 
 ## Features:

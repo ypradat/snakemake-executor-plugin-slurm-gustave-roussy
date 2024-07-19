@@ -115,9 +115,18 @@ class Executor(RemoteExecutor):
         """
         hostname: str = os.environ.get("HOSTNAME", "").lower()
         if hostname.startswith("flamingo"):
-            print("Pipeline shoule not be launched from login node.")
-        elif hostname in [f"n{i:0=2d}" for i in range(1, 26)]:
+            print("Pipeline should not be launched from login node.")
+
+        if hostname in [f"n{i:0=2d}" for i in range(1, 26)] + [
+            f"gpu{i:0=2d}" for i in range(1, 4)
+        ]:
             if gres:
+                queue, node_type, gpu_number = gres.split(":")
+                if node_type.lower().strip() in ("a100", "v100"):
+                    return "gpgpuq"
+                if node_type.lower().strip() == "t4":
+                    return "visuq"
+
                 return "gpuq"
 
             if runtime <= 360:
@@ -138,6 +147,23 @@ class Executor(RemoteExecutor):
             )
             return self._fallback_partition
         return None
+
+    def get_node(self, gres: Optional[str] = None) -> str:
+        """
+        Return best node according to resources
+        """
+        if gres is None:
+            return "default"
+
+        queue, node_type, gpu_number = gres.split(":")
+        if node_type.lower().strip() == "a100":
+            return "gpu03"
+        if node_type.lower().strip() == "t4":
+            return "gpu01"
+        if node_type.lower().strip() == "v100":
+            return "gpu02"
+
+        return "default"
 
     def run_job(self, job: JobExecutorInterface):
         # Implement here how to run a job.
@@ -170,6 +196,10 @@ class Executor(RemoteExecutor):
         )
         if partition:
             call += f" --partition {partition} "
+
+        node_name: str = get_node(job.resources.get("gres"))
+        if node_name != "default":
+            call += f" --nodes {node_name} "
 
         call += f"--time {runtime} --cpus-per-task {job.threads}"
 
