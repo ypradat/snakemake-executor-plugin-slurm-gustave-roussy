@@ -197,8 +197,8 @@ class Executor(RemoteExecutor):
         if partition:
             call += f" --partition {partition} "
 
-        #node_name: str = self.get_node(job.resources.get("gres"))
-        #if node_name != "default":
+        # node_name: str = self.get_node(job.resources.get("gres"))
+        # if node_name != "default":
         #    call += f" --nodelist='{node_name}' "
 
         call += f"--time {runtime} --cpus-per-task {job.threads}"
