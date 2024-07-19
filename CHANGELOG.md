@@ -1,3 +1,9 @@
+# 0.3.2
+
+## Features:
+
+* Don't use node names
+
 # 0.3.1
 
 ## Features:
