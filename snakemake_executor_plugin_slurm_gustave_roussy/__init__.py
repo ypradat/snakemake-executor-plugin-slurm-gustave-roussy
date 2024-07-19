@@ -197,7 +197,7 @@ class Executor(RemoteExecutor):
         if partition:
             call += f" --partition {partition} "
 
-        node_name: str = get_node(job.resources.get("gres"))
+        node_name: str = self.get_node(job.resources.get("gres"))
         if node_name != "default":
             call += f" --nodes {node_name} "
 
