@@ -1,3 +1,9 @@
+# 0.3.1
+
+## Features:
+
+* Use `nodename` instead of `nodes`
+
 # 0.3.0
 
 ## Features:

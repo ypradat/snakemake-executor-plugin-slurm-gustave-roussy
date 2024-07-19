@@ -199,7 +199,7 @@ class Executor(RemoteExecutor):
 
         node_name: str = self.get_node(job.resources.get("gres"))
         if node_name != "default":
-            call += f" --nodes {node_name} "
+            call += f" --nodelist='{node_name}' "
 
         call += f"--time {runtime} --cpus-per-task {job.threads}"
 
