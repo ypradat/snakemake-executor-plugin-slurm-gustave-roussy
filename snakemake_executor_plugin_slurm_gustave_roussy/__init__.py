@@ -1,6 +1,6 @@
-__author__ = "Thibault Dayris"
-__copyright__ = "Copyright 2024, Thibault Dayris"
-__email__ = "thibault.dayris@gustaveroussy.fr"
+_author__ = "Yoann Pradat"
+__copyright__ = "Copyright 2024, Yoann Pradat"
+__email__ = "yoann.pradat@gustaveroussy.fr"
 __license__ = "MIT"
 
 # This executor is highly based on snakemake-executor-plugin-slurm
@@ -78,7 +78,7 @@ class Executor(RemoteExecutor):
     def __post_init__(self):
         self.run_uuid: str = str(uuid.uuid4())
         self.logger.info(f"SLURM run ID: {self.run_uuid}")
-        self._default_runtime: int = 360
+        self._default_runtime: int = 30
         self._default_mem: int = 1024
         self._fallback_account_arg: Optional[str] = None
         self._fallback_partition: str = "shortq"
@@ -108,45 +108,37 @@ class Executor(RemoteExecutor):
     def additional_general_args(self) -> str:
         return "--executor slurm-jobstep --jobs 1"
 
-    def get_partition(self, runtime: int = 360, gres: Optional[str] = None) -> str:
+    def get_partition(self, runtime: int = 30, gres: Optional[str] = None) -> str:
         """
         Return best partition based on runtime reservation
         and possible GPU resources reservation.
         """
-        hostname: str = os.environ.get("HOSTNAME", "").lower()
-        if hostname.startswith("flamingo"):
-            print("Pipeline should not be launched from login node.")
+        if gres:
+            queue, node_type, gpu_number = gres.split(":")
+            if node_type.lower().strip() in ("a100", "v100"):
+                return "gpgpuq"
+            if node_type.lower().strip() == "t4":
+                return "visuq"
 
-        if hostname in [f"n{i:0=2d}" for i in range(1, 26)] + [
-            f"gpu{i:0=2d}" for i in range(1, 4)
-        ]:
-            if gres:
-                queue, node_type, gpu_number = gres.split(":")
-                if node_type.lower().strip() in ("a100", "v100"):
-                    return "gpgpuq"
-                if node_type.lower().strip() == "t4":
-                    return "visuq"
+            return "gpuq"
 
-                return "gpuq"
+        if runtime <= 360:
+            return "shortq"
 
-            if runtime <= 360:
-                return "shortq"
+        if runtime <= 60 * 24:
+            return "mediumq"
 
-            if runtime <= 60 * 24:
-                return "mediumq"
+        if runtime <= 60 * 24 * 7:
+            return "longq"
 
-            if runtime <= 60 * 24 * 7:
-                return "longq"
+        if runtime <= 60 * 24 * 60:
+            return "verylongq"
 
-            if runtime <= 60 * 24 * 60:
-                return "verylongq"
-
-            self.logger.warning(
-                "Could not select a correct partition. "
-                f"Falling back to default: {self._fallback_partition}"
-            )
-            return self._fallback_partition
-        return None
+        self.logger.warning(
+            "Could not select a correct partition. "
+            f"Falling back to default: {self._fallback_partition}"
+        )
+        return self._fallback_partition
 
     def get_node(self, gres: Optional[str] = None) -> str:
         """
@@ -176,10 +168,14 @@ class Executor(RemoteExecutor):
         # If required, make sure to pass the job's id to the job_info object, as keyword
         # argument 'external_job_id'.
 
-        log_folder: str = f"group_{job.name}" if job.is_group() else f"rule_{job.name}"
-        slurm_logfile: str = os.path.abspath(
-            f".snakemake/slurm_logs/{log_folder}/%j.log"
-        )
+        # Output
+        if len(job.log) > 0:
+            slurm_logfile = job.log[0].replace(".log", "_%j-%N.oe")
+        else:
+            log_folder: str = f"group_{job.name}" if job.is_group() else f"rule_{job.name}"
+            slurm_logfile: str = os.path.abspath(
+                f".snakemake/slurm_logs/{log_folder}/%j.log"
+            )
         os.makedirs(os.path.dirname(slurm_logfile), exist_ok=True)
 
         # generic part of a submission string:
@@ -189,6 +185,16 @@ class Executor(RemoteExecutor):
             f"sbatch --job-name {self.run_uuid} --output {slurm_logfile} --export=ALL "
             f"--comment {job.name} "
         )
+
+        # Set runtime
+        if job.resources.get("runtime"):
+            runtime = int(job.resources.runtime)
+        elif job.resources.get("walltime"):
+            runtime = int(job.resources.walltime)
+        elif job.resources.get("time_min"):
+            runtime = int(job.resources.time_min)
+        else:
+            runtime = self._default_runtime
 
         runtime: int = job.resources.get("runtime", self._default_runtime)
         partition: str = self.get_partition(
@@ -203,8 +209,22 @@ class Executor(RemoteExecutor):
 
         call += f"--time {runtime} --cpus-per-task {job.threads}"
 
-        memory: int = job.resources.get("mem_mb", self._default_mem)
-        call += f" --mem {memory}"
+        # Set memory
+        if job.resources.get("mem_mb_per_cpu"):
+            call += f" --mem-per-cpu {job.resources.mem_mb_per_cpu}"
+        else:
+            if job.resources.get("mem_mb"):
+                memory = int(job.resources.mem_mb)
+            elif job.resources.get("mem"):
+                memory = int(job.resources.mem)
+            else:
+                memory = self._default_mem
+            call += f" --mem {memory}"
+
+
+        # Set nodes if request by the user
+        if job.resources.get("nodes", False):
+            call += f" --nodes={job.resources.get('nodes', 1)}"
 
         # ensure that workdir is set correctly
         # use short argument as this is the same in all slurm versions
