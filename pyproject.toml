@@ -4,9 +4,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "snakemake-executor-plugin-slurm-gustave-roussy"
-version = "0.3.2"
+version = "0.4"
 description = ""
-authors = [ "tdayris <thibault.dayris@gustaveroussy.fr>",]
+authors = [ "tdayris <yoann.pradat@gustaveroussy.fr>",]
 readme = "README.md"
 repository = "https://github.com/tdayris/snakemake-executor-plugin-slurm-gustave-roussy"
 documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/executor/slurm-gustave-roussy.html"

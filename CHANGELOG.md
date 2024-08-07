@@ -1,3 +1,14 @@
+# 0.4
+
+## Features:
+
+*  Change naming of HPC output file to match the name of the rule log for which `.log` is replaced by "\_%j-%N.oe"
+   allowing to see the HPC job and node ids.
+*  Allow the user to specify runtime via the resources keywords `runtime`, `walltime`, `time_min` and the memory via the
+   keywords `mem_mb` or `mem`
+*  Remove condition preventing the user from running the pipeline on the login node.
+
+
 # 0.3.2
 
 ## Features:
