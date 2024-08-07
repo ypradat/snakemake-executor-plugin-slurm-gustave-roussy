@@ -1,9 +1,12 @@
 # Snakemake executor plugin: slurm-gustave-roussy
 
-Snakemake plugin executor designed to match [Gustave Roussy](https://www.gustaveroussy.fr/en) computing cluster specificities : automatic partition seleciton, and default resources value.
+Snakemake plugin executor designed to match [Gustave Roussy](https://www.gustaveroussy.fr/en) computing cluster
+specificities: automatic partition seleciton, and default resources value.
 
-Checkout the profile given on the cluster to automatically activate this executor with your pipeline:
+This plugin was adapated from 
 
-`snakemake --profile /mnt/beegfs/pipelines/unofficial-snakemake-wrappers/profiles/slurm-web ... `
+Check the profile at <https://github.com/ypradat/snakemake_slurm_profile> to set your up.
+This plugin should be installed as a python package alongside your snakemake comman
 
-For documentation, see the [Snakemake plugin catalog](https://snakemake.github.io/snakemake-plugin-catalog/plugins/executor/slurm-gustave-roussy.html).
+As this plugin was not deposited on `pip` you will have to locally install it via `pip install -e
+/path/to/plugin` from the environment where snakemake is installed.
