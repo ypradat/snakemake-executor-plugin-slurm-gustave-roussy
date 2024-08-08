@@ -196,7 +196,6 @@ class Executor(RemoteExecutor):
         else:
             runtime = self._default_runtime
 
-        runtime: int = job.resources.get("runtime", self._default_runtime)
         partition: str = self.get_partition(
             runtime=runtime, gres=job.resources.get("gres")
         )
