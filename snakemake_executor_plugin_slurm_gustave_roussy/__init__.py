@@ -225,6 +225,10 @@ class Executor(RemoteExecutor):
         if job.resources.get("nodes", False):
             call += f" --nodes={job.resources.get('nodes', 1)}"
 
+        # Set nodes if request by the user
+        if job.resources.get("gres", False):
+            call += f" --gres={job.resources.gres}"
+
         # ensure that workdir is set correctly
         # use short argument as this is the same in all slurm versions
         # (see https://github.com/snakemake/snakemake/issues/2014)
